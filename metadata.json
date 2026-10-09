@@ -1,0 +1,6 @@
+{
+  "name": "FloodLens — Street-Level Flood Intelligence",
+  "description": "Civic-tech street-level flood intelligence and crowdsourced incident verification platform for WeMakeDevs Bharat Builds Environmental Hacks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
