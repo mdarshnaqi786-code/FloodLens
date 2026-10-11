@@ -42,13 +42,20 @@ export const AuthorityConsole: React.FC<AuthorityConsoleProps> = ({
   const activeIncidents = incidents.filter(i => i.status !== 'cleared');
   const highIncidents = incidents.filter(i => i.severity === 'high');
 
+  // Ensure effective incident ID is always populated when incidents are loaded
+  const effectiveIncidentId = selectedIncidentId || activeIncidents[0]?.id || incidents[0]?.id || '';
+
   const handleDispatchAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedIncidentId) return;
+    const targetId = effectiveIncidentId;
+    if (!targetId) {
+      setStatusFeedback('Please select an active incident first.');
+      return;
+    }
     setIsUpdating(true);
     setStatusFeedback('');
     try {
-      await onUpdateAction(selectedIncidentId, actionType, actionNotes, authorityName);
+      await onUpdateAction(targetId, actionType, actionNotes, authorityName);
       setStatusFeedback(`Success: Action "${actionType}" logged and broadcasted to commuters!`);
       setTimeout(() => setStatusFeedback(''), 4000);
     } catch (err: any) {
@@ -230,7 +237,7 @@ export const AuthorityConsole: React.FC<AuthorityConsoleProps> = ({
                 Select Flood Incident *
               </label>
               <select
-                value={selectedIncidentId}
+                value={effectiveIncidentId}
                 onChange={(e) => setSelectedIncidentId(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
               >
@@ -288,7 +295,7 @@ export const AuthorityConsole: React.FC<AuthorityConsoleProps> = ({
 
             <button
               type="submit"
-              disabled={isUpdating || !selectedIncidentId}
+              disabled={isUpdating || !effectiveIncidentId}
               className="w-full py-2.5 px-4 bg-teal-700 hover:bg-teal-600 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Wrench className="w-3.5 h-3.5" />

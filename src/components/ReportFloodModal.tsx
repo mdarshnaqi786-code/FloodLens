@@ -33,9 +33,9 @@ const CITY_COORDINATES: Record<string, [number, number]> = {
 };
 
 const SAMPLE_PHOTO_PRESETS = [
-  { label: 'Submerged Underpass', url: '/src/assets/images/mumbai_underpass_flood_1791545823927.jpg' },
-  { label: 'Waterlogged Arterial Road', url: '/src/assets/images/bengaluru_ringroad_flood_1791545845927.jpg' },
-  { label: 'Drainage Overflow Junction', url: '/src/assets/images/drainage_pump_inspection_1791545867557.jpg' },
+  { label: 'Submerged Underpass', url: '/images/mumbai_underpass_flood_1791545823927.jpg' },
+  { label: 'Waterlogged Arterial Road', url: '/images/bengaluru_ringroad_flood_1791545845927.jpg' },
+  { label: 'Drainage Overflow Junction', url: '/images/drainage_pump_inspection_1791545867557.jpg' },
 ];
 
 export const ReportFloodModal: React.FC<ReportFloodModalProps> = ({
@@ -65,12 +65,16 @@ export const ReportFloodModal: React.FC<ReportFloodModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Sync city when modal opens or selectedCity changes
+  // Sync city only when modal transitions from closed to open
+  const prevIsOpenRef = React.useRef(isOpen);
   React.useEffect(() => {
-    if (selectedCity && selectedCity !== 'all') {
-      setCity(selectedCity as any);
+    if (isOpen && !prevIsOpenRef.current) {
+      if (selectedCity && selectedCity !== 'all') {
+        setCity(selectedCity as any);
+      }
     }
-  }, [selectedCity, isOpen]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, selectedCity]);
 
   if (!isOpen) return null;
 
@@ -140,15 +144,54 @@ export const ReportFloodModal: React.FC<ReportFloodModalProps> = ({
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        if (uploadEvent.target?.result) {
-          setPhotoUrl(uploadEvent.target.result as string);
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage('Please upload a valid image file (JPEG, PNG, or WEBP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const rawUrl = uploadEvent.target?.result as string;
+      if (!rawUrl) return;
+
+      // Downscale image to max 800px width/height using HTML5 Canvas to prevent LocalStorage quota overflow
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 800;
+        const maxHeight = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width / height > maxWidth / maxHeight) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setPhotoUrl(compressed);
+        } else {
+          setPhotoUrl(rawUrl);
         }
       };
-      reader.readAsDataURL(file);
-    }
+      img.onerror = () => {
+        setPhotoUrl(rawUrl);
+      };
+      img.src = rawUrl;
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -445,13 +488,22 @@ export const ReportFloodModal: React.FC<ReportFloodModalProps> = ({
                 </div>
 
                 {photoUrl && (
-                  <div className="mt-2 relative rounded-lg overflow-hidden border border-slate-200 max-h-32 aspect-video">
+                  <div className="mt-2 relative rounded-lg overflow-hidden border border-slate-200 max-h-32 aspect-video bg-slate-100 flex items-center justify-center">
                     <img
                       src={photoUrl}
                       alt="Evidence preview"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                        const fallback = e.currentTarget.parentElement?.querySelector('.img-error-fallback');
+                        if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                      }}
                       className="w-full h-full object-cover"
                     />
+                    <div className="img-error-fallback hidden text-xs text-slate-500 items-center gap-1.5 p-3">
+                      <Camera className="w-4 h-4 text-slate-400" />
+                      <span>Photo selected (preview unavailable)</span>
+                    </div>
                   </div>
                 )}
               </div>

@@ -47,6 +47,17 @@ export const MapView: React.FC<MapViewProps> = ({
   const [isTilesLoading, setIsTilesLoading] = useState(true);
   const [tileErrorOccurred, setTileErrorOccurred] = useState(false);
 
+  // Keep latest callback references to prevent stale closures in Leaflet listeners
+  const onMapClickDropPinRef = useRef(onMapClickDropPin);
+  useEffect(() => {
+    onMapClickDropPinRef.current = onMapClickDropPin;
+  }, [onMapClickDropPin]);
+
+  const onSelectIncidentRef = useRef(onSelectIncident);
+  useEffect(() => {
+    onSelectIncidentRef.current = onSelectIncident;
+  }, [onSelectIncident]);
+
   // Initialize Leaflet map with standard OpenStreetMap (NO API KEY REQUIRED)
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -93,7 +104,7 @@ export const MapView: React.FC<MapViewProps> = ({
     hotspotsLayerRef.current = L.layerGroup().addTo(map);
 
     map.on('click', (e: L.LeafletMouseEvent) => {
-      onMapClickDropPin([e.latlng.lat, e.latlng.lng]);
+      onMapClickDropPinRef.current([e.latlng.lat, e.latlng.lng]);
     });
 
     mapInstanceRef.current = map;
@@ -105,8 +116,13 @@ export const MapView: React.FC<MapViewProps> = ({
 
     return () => {
       clearTimeout(timer);
-      map.remove();
-      mapInstanceRef.current = null;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      if (mapContainerRef.current) {
+        delete (mapContainerRef.current as any)._leaflet_id;
+      }
     };
   }, []);
 
@@ -211,7 +227,7 @@ export const MapView: React.FC<MapViewProps> = ({
       marker.bindPopup(popupHtml, { closeButton: false, offset: [0, -20] });
 
       marker.on('click', () => {
-        onSelectIncident(incident);
+        onSelectIncidentRef.current(incident);
       });
 
       markersLayerRef.current?.addLayer(marker);
@@ -305,7 +321,7 @@ export const MapView: React.FC<MapViewProps> = ({
   return (
     <div className="relative w-full h-full min-h-[420px] bg-slate-100 rounded-xl overflow-hidden border border-slate-200/80 shadow-xs">
       {/* Map Target Canvas */}
-      <div ref={mapContainerRef} className="w-full h-full" />
+      <div ref={mapContainerRef} className={`w-full h-full ${isPinDropping ? 'cursor-crosshair' : ''}`} />
 
       {/* Loading Indicator for Tiles */}
       {isTilesLoading && (

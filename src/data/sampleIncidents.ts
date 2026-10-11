@@ -3,10 +3,10 @@ import { calculateTrustScore } from '../utils/trustScore';
 
 const now = Date.now();
 
-// Image imports or direct paths
-const imgMilan = '/src/assets/images/mumbai_underpass_flood_1791545823927.jpg';
-const imgBellandur = '/src/assets/images/bengaluru_ringroad_flood_1791545845927.jpg';
-const imgHindmata = '/src/assets/images/drainage_pump_inspection_1791545867557.jpg';
+// Seeded demonstration flood scenario images served from /public/images/
+const imgMilan = '/images/mumbai_underpass_flood_1791545823927.jpg';
+const imgBellandur = '/images/bengaluru_ringroad_flood_1791545845927.jpg';
+const imgHindmata = '/images/drainage_pump_inspection_1791545867557.jpg';
 
 export const INITIAL_INCIDENTS: FloodIncident[] = [
   {

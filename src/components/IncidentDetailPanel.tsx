@@ -29,6 +29,11 @@ export const IncidentDetailPanel: React.FC<IncidentDetailPanelProps> = ({
 }) => {
   const [isCorroborating, setIsCorroborating] = useState(false);
   const [hasJustCorroborated, setHasJustCorroborated] = useState(false);
+  const [imgLoadError, setImgLoadError] = useState(false);
+
+  React.useEffect(() => {
+    setImgLoadError(false);
+  }, [incident?.id, incident?.photoUrl]);
 
   if (!incident) return null;
 
@@ -76,13 +81,22 @@ export const IncidentDetailPanel: React.FC<IncidentDetailPanelProps> = ({
           </h3>
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-          aria-label="Close panel"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={onClose}
+            className="px-2.5 py-1 text-xs font-semibold text-slate-600 bg-slate-200/80 hover:bg-slate-300 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            title="Return to searchable incident list"
+          >
+            <span>← Back to Feed</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+            aria-label="Close panel"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content */}
@@ -155,17 +169,26 @@ export const IncidentDetailPanel: React.FC<IncidentDetailPanelProps> = ({
                 {incident.isSampleData ? 'Illustrative Scenario Photo (Demo)' : 'Citizen Uploaded Photo'}
               </span>
             </div>
-            <div className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-900 group">
-              <img
-                src={incident.photoUrl}
-                alt={incident.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded">
-                {incident.isSampleData ? 'Demonstration scenario photo · Simulated timestamp' : `Submitted: ${incident.reportedAt}`}
+            {imgLoadError ? (
+              <div className="p-4 bg-slate-100 rounded-xl border border-slate-200/80 text-xs text-slate-500 flex flex-col items-center justify-center gap-1.5 py-6">
+                <Camera className="w-6 h-6 text-slate-400" />
+                <span className="font-medium text-slate-600">Image preview unavailable</span>
+                <span className="text-[11px] text-slate-400">The incident report metadata and TrustScore remain fully verified.</span>
               </div>
-            </div>
+            ) : (
+              <div className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-900 group">
+                <img
+                  src={incident.photoUrl}
+                  alt={incident.title}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgLoadError(true)}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute bottom-2 left-2 right-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded">
+                  {incident.isSampleData ? 'Demonstration scenario photo · Simulated timestamp' : `Submitted: ${incident.reportedAt}`}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-500 flex items-center gap-2">

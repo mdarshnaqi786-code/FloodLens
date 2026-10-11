@@ -49,25 +49,21 @@ export const LiveRainfallWidget: React.FC<LiveRainfallWidgetProps> = ({ selected
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
         // Ignored or timed out
-        if (!weatherData) {
-          setErrorMessage('Weather data request timed out.');
-        }
+        setErrorMessage(prev => prev || 'Weather data request timed out.');
       } else {
         const msg = err.message || 'Weather data unavailable';
         setErrorMessage(msg);
-        // If we already have previous data, mark it as stale
-        if (weatherData) {
-          setWeatherData({
-            ...weatherData,
-            isStale: true,
-            status: 'stale'
-          });
-        }
+        // If we already have previous data, mark it as stale without stale closure
+        setWeatherData(prev => prev ? {
+          ...prev,
+          isStale: true,
+          status: 'stale'
+        } : null);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [weatherData]);
+  }, []);
 
   // Refetch when selectedCity changes
   useEffect(() => {

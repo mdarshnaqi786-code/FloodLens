@@ -10,11 +10,42 @@ export const AWS_API_BASE_URL = import.meta.env.VITE_AWS_API_BASE_URL || '';
 export const IS_AWS_CONNECTED = Boolean(AWS_API_BASE_URL && AWS_API_BASE_URL.startsWith('http'));
 
 class IncidentService {
+  private normalizePhotoUrl(url?: string): string | undefined {
+    if (!url) return undefined;
+    // Data URLs (Base64 uploads) are directly valid
+    if (url.startsWith('data:image/')) return url;
+    // If URL points to old /src/assets/images or bare filename, normalize to /images/
+    if (url.includes('mumbai_underpass_flood_1791545823927')) {
+      return '/images/mumbai_underpass_flood_1791545823927.jpg';
+    }
+    if (url.includes('bengaluru_ringroad_flood_1791545845927')) {
+      return '/images/bengaluru_ringroad_flood_1791545845927.jpg';
+    }
+    if (url.includes('drainage_pump_inspection_1791545867557')) {
+      return '/images/drainage_pump_inspection_1791545867557.jpg';
+    }
+    return url;
+  }
+
   private getStoredIncidents(): FloodIncident[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
       if (data) {
-        return JSON.parse(data);
+        const parsed: FloodIncident[] = JSON.parse(data);
+        // Normalize any old image URLs stored in localStorage
+        let needsSave = false;
+        const normalized = parsed.map(inc => {
+          const normPhoto = this.normalizePhotoUrl(inc.photoUrl);
+          if (normPhoto !== inc.photoUrl) {
+            needsSave = true;
+            return { ...inc, photoUrl: normPhoto };
+          }
+          return inc;
+        });
+        if (needsSave) {
+          this.saveIncidents(normalized);
+        }
+        return normalized;
       }
     } catch {
       // fallback

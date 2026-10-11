@@ -34,7 +34,11 @@ export async function fetchLiveRainfall(
   cityName: string,
   signal?: AbortSignal
 ): Promise<LiveRainfallData> {
-  const target = CITY_COORDINATES_MAP[cityName] || CITY_COORDINATES_MAP['Mumbai'];
+  const normalized = (cityName || '').trim().toLowerCase();
+  const matchedKey = Object.keys(CITY_COORDINATES_MAP).find(
+    k => k.toLowerCase() === normalized || (normalized.includes('delhi') && k.toLowerCase().includes('delhi'))
+  );
+  const target = matchedKey ? CITY_COORDINATES_MAP[matchedKey] : (CITY_COORDINATES_MAP[cityName] || CITY_COORDINATES_MAP['all']);
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${target.lat}&longitude=${target.lng}&current=precipitation,rain&hourly=precipitation&forecast_days=2&timezone=auto`;
 
   const response = await fetch(url, {
@@ -69,13 +73,13 @@ export async function fetchLiveRainfall(
     startIndex = 0;
   }
 
-  // Extract next 6 hours
+  // Extract next 6 hours starting from current / upcoming hour
   const hourlyForecast: HourlyPrecipitation[] = [];
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 0; i < 6; i++) {
     const idx = startIndex + i;
     if (idx < hourlyTimes.length) {
       const rawIso = hourlyTimes[idx];
-      let timeLabel = `+${i}h`;
+      let timeLabel = `+${i + 1}h`;
       try {
         const d = new Date(rawIso);
         timeLabel = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
