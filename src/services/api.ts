@@ -4,12 +4,38 @@ import { calculateTrustScore } from '../utils/trustScore';
 
 const STORAGE_KEY = 'floodlens_incidents_v2';
 const HOTSPOTS_KEY = 'floodlens_hotspots_v1';
+const VOTED_KEY = 'floodlens_voted_incidents_v1';
 
 // Check if an external AWS SAM Lambda API URL is configured in environment
 export const AWS_API_BASE_URL = import.meta.env.VITE_AWS_API_BASE_URL || '';
 export const IS_AWS_CONNECTED = Boolean(AWS_API_BASE_URL && AWS_API_BASE_URL.startsWith('http'));
 
 class IncidentService {
+  public getCorroboratedIncidentIds(): string[] {
+    try {
+      const data = localStorage.getItem(VOTED_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback on corrupt JSON
+    }
+    return [];
+  }
+
+  public hasCorroborated(incidentId: string): boolean {
+    const votedList = this.getCorroboratedIncidentIds();
+    return votedList.includes(incidentId);
+  }
+
+  private markCorroborated(incidentId: string): void {
+    const votedList = this.getCorroboratedIncidentIds();
+    if (!votedList.includes(incidentId)) {
+      votedList.push(incidentId);
+      localStorage.setItem(VOTED_KEY, JSON.stringify(votedList));
+    }
+  }
   private normalizePhotoUrl(url?: string): string | undefined {
     if (!url) return undefined;
     // Data URLs (Base64 uploads) are directly valid
@@ -183,7 +209,18 @@ class IncidentService {
     if (index === -1) throw new Error('Incident not found');
 
     const inc = existing[index];
+
+    // Check if the current browser session has already corroborated this incident
+    if (this.hasCorroborated(incidentId)) {
+      // Do not increment the count or recalculate TrustScore for duplicate attempts
+      return inc;
+    }
+
     const newCorroborationCount = inc.corroborationCount + 1;
+    // Maintain corroborationIds array consistency
+    const currentCorroborationIds = Array.isArray(inc.corroborationIds) ? [...inc.corroborationIds] : [];
+    const localVoterTag = `voter_${Date.now().toString(36)}`;
+    const updatedCorroborationIds = [...currentCorroborationIds, localVoterTag];
 
     const newTrustScore = calculateTrustScore({
       reportedTimestamp: inc.timestamp,
@@ -197,11 +234,13 @@ class IncidentService {
     const updated: FloodIncident = {
       ...inc,
       corroborationCount: newCorroborationCount,
+      corroborationIds: updatedCorroborationIds,
       trustScore: newTrustScore
     };
 
     existing[index] = updated;
     this.saveIncidents(existing);
+    this.markCorroborated(incidentId);
     return updated;
   }
 

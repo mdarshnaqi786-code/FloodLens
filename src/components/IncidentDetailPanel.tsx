@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FloodIncident } from '../types';
+import { incidentService } from '../services/api';
 import { 
   X, 
   MapPin, 
@@ -28,21 +29,26 @@ export const IncidentDetailPanel: React.FC<IncidentDetailPanelProps> = ({
   onCorroborate,
 }) => {
   const [isCorroborating, setIsCorroborating] = useState(false);
-  const [hasJustCorroborated, setHasJustCorroborated] = useState(false);
+  const [hasAlreadyCorroborated, setHasAlreadyCorroborated] = useState(false);
   const [imgLoadError, setImgLoadError] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setImgLoadError(false);
+    if (incident?.id) {
+      setHasAlreadyCorroborated(incidentService.hasCorroborated(incident.id));
+    } else {
+      setHasAlreadyCorroborated(false);
+    }
   }, [incident?.id, incident?.photoUrl]);
 
   if (!incident) return null;
 
   const handleCorroborateClick = async () => {
-    if (isCorroborating || hasJustCorroborated) return;
+    if (isCorroborating || hasAlreadyCorroborated) return;
     setIsCorroborating(true);
     try {
       await onCorroborate(incident.id);
-      setHasJustCorroborated(true);
+      setHasAlreadyCorroborated(true);
     } finally {
       setIsCorroborating(false);
     }
@@ -264,20 +270,21 @@ export const IncidentDetailPanel: React.FC<IncidentDetailPanelProps> = ({
             <div className="text-[11px] text-slate-500">
               <span className="font-mono font-bold text-slate-800 tabular-nums">
                 {incident.corroborationCount}
-              </span> {incident.isSampleData && !hasJustCorroborated ? 'simulated confirmations (Demo)' : 'citizen confirmations'}
+              </span> {incident.isSampleData && !hasAlreadyCorroborated ? 'simulated confirmations (Demo)' : 'citizen confirmations'}
             </div>
 
             <button
               onClick={handleCorroborateClick}
-              disabled={isCorroborating || hasJustCorroborated}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                hasJustCorroborated
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  : 'bg-teal-700 hover:bg-teal-600 text-white shadow-xs'
+              disabled={isCorroborating || hasAlreadyCorroborated}
+              aria-disabled={isCorroborating || hasAlreadyCorroborated}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                hasAlreadyCorroborated
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-not-allowed opacity-90'
+                  : 'bg-teal-700 hover:bg-teal-600 text-white shadow-xs cursor-pointer'
               }`}
             >
               <ThumbsUp className="w-3.5 h-3.5" />
-              <span>{hasJustCorroborated ? 'Corroborated in Session!' : 'Corroborate Report'}</span>
+              <span>{hasAlreadyCorroborated ? 'Already Corroborated' : 'Corroborate Report'}</span>
             </button>
           </div>
         </div>
